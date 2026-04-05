@@ -39,6 +39,14 @@ const EFFECT_EDGE_THRESHOLD = 18;
 const EFFECT_EDGE_SOFTNESS = 54;
 const EFFECT_MAX_WORK_PIXELS = 250000;
 const READY_SOUND = "assets/ready.mp3";
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],
+  [0, 5], [5, 6], [6, 7], [7, 8],
+  [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16],
+  [13, 17], [17, 18], [18, 19], [19, 20],
+  [0, 17],
+];
 
 const dom = {
   launcher: document.getElementById("launcherScreen"),
@@ -47,6 +55,7 @@ const dom = {
   video: document.getElementById("cameraVideo"),
   effectLabel: document.getElementById("effectLabel"),
   trackingLabel: document.getElementById("trackingLabel"),
+  fingerLabel: document.getElementById("fingerLabel"),
   backButton: document.getElementById("backButton"),
   errorToast: document.getElementById("errorToast"),
 };
@@ -246,6 +255,12 @@ function isTwoSign(landmarks) {
   return thumbFold;
 }
 
+function isThumbFoldedForTwoSign(landmarks) {
+  const wrist = landmarks[0];
+  const guideReach = Math.max(dist(landmarks[8], wrist), dist(landmarks[12], wrist));
+  return dist(landmarks[4], wrist) < guideReach * 1.32;
+}
+
 function isOpenPalm(landmarks) {
   if (!areMajorFingersExtended(landmarks)) {
     return false;
@@ -279,6 +294,57 @@ function classifyRightHandGesture(hand) {
     return "open";
   }
   return "other";
+}
+
+function getFingerDebugText(hand) {
+  if (!hand) {
+    return "IDX:- MID:- RNG:- PNK:- THB:-";
+  }
+
+  const landmarks = hand.landmarks;
+  const indexUp = isFingerExtended(landmarks, 8, 6, 5);
+  const middleUp = isFingerExtended(landmarks, 12, 10, 9);
+  const ringUp = isFingerExtended(landmarks, 16, 14, 13);
+  const pinkyUp = isFingerExtended(landmarks, 20, 18, 17);
+  const thumbFold = isThumbFoldedForTwoSign(landmarks);
+  return [
+    `IDX:${indexUp ? "UP" : "DN"}`,
+    `MID:${middleUp ? "UP" : "DN"}`,
+    `RNG:${ringUp ? "UP" : "DN"}`,
+    `PNK:${pinkyUp ? "UP" : "DN"}`,
+    `THB:${thumbFold ? "FD" : "OP"}`,
+  ].join("  ");
+}
+
+function drawHandDebug(hand, width, height) {
+  if (!hand) {
+    return;
+  }
+
+  const points = hand.landmarks.map((landmark) => ({
+    x: landmark.x * width,
+    y: landmark.y * height,
+  }));
+
+  ctx.save();
+  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = "rgba(112, 214, 255, 0.9)";
+  ctx.fillStyle = "rgba(248, 252, 255, 0.95)";
+  for (const [from, to] of HAND_CONNECTIONS) {
+    const a = points[from];
+    const b = points[to];
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+  }
+
+  for (const point of points) {
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 function playReadyAudio() {
@@ -558,6 +624,8 @@ function drawFrame() {
   const rightHand = getRightHand(state.latestResults);
   const trackingText = updateGestureState(rightHand);
   dom.trackingLabel.textContent = trackingText;
+  dom.fingerLabel.textContent = getFingerDebugText(rightHand);
+  drawHandDebug(rightHand, width, height);
   if (rightHand && state.effectVisible) {
     syncEffectPlayback(true);
     drawEffectOverlay(rightHand, width, height);

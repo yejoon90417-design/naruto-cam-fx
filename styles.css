@@ -199,6 +199,10 @@ button {
   border-radius: 16px;
 }
 
+.status-chip-wide {
+  min-width: 340px;
+}
+
 .status-label {
   display: block;
   color: #9cb0d0;
@@ -209,6 +213,7 @@ button {
   display: block;
   margin-top: 4px;
   font-size: 1rem;
+  line-height: 1.35;
 }
 
 .back-button {
