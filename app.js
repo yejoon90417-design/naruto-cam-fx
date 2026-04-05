@@ -107,16 +107,30 @@ function buildRuntimeConfig() {
   return {
     mobile,
     dprCap: mobile ? 1.0 : 1.1,
-    trackWidth: mobile ? 768 : 640,
-    trackHeight: mobile ? 432 : 360,
-    trackIntervalMs: mobile ? 45 : 75,
+    trackWidth: mobile ? 960 : 640,
+    trackHeight: mobile ? 540 : 360,
+    trackIntervalMs: mobile ? 34 : 75,
     captureWidth: mobile ? 1280 : 960,
     captureHeight: mobile ? 720 : 540,
     captureFps: mobile ? 30 : 24,
     modelComplexity: mobile ? 1 : 0,
-    minDetectionConfidence: mobile ? 0.42 : 0.55,
-    minTrackingConfidence: mobile ? 0.38 : 0.5,
-    handLostGraceMs: mobile ? 220 : 140,
+    minDetectionConfidence: mobile ? 0.34 : 0.55,
+    minTrackingConfidence: mobile ? 0.28 : 0.5,
+    handLostGraceMs: mobile ? 320 : 140,
+  };
+}
+
+function getGestureTuning() {
+  const mobile = state.runtime?.mobile;
+  return {
+    fingerTipLift: mobile ? 0.004 : 0.008,
+    fingerPipSlack: mobile ? 0.02 : 0.012,
+    foldedFingerSlack: mobile ? 0.045 : 0.025,
+    openMinWidth: mobile ? 0.055 : 0.07,
+    openMinHeight: mobile ? 0.085 : 0.1,
+    openAvgTipLift: mobile ? 0.03 : 0.045,
+    openTipSpan: mobile ? 0.05 : 0.06,
+    thumbFoldRatio: mobile ? 1.58 : 1.42,
   };
 }
 
@@ -133,6 +147,9 @@ function setScreen(screenName) {
 }
 
 function showError(message) {
+  if (!dom.errorToast) {
+    return;
+  }
   dom.errorToast.textContent = message;
   dom.errorToast.hidden = !message;
 }
@@ -255,10 +272,11 @@ function dist(a, b) {
 }
 
 function isFingerExtended(landmarks, tipIndex, pipIndex, mcpIndex) {
+  const tuning = getGestureTuning();
   const tip = landmarks[tipIndex];
   const pip = landmarks[pipIndex];
   const mcp = landmarks[mcpIndex];
-  return tip.y < pip.y - 0.008 && pip.y < mcp.y + 0.012;
+  return tip.y < pip.y - tuning.fingerTipLift && pip.y < mcp.y + tuning.fingerPipSlack;
 }
 
 function areMajorFingersExtended(landmarks) {
@@ -271,46 +289,49 @@ function areMajorFingersExtended(landmarks) {
 }
 
 function isTwoSign(landmarks) {
+  const tuning = getGestureTuning();
   const wrist = landmarks[0];
   const indexUp = isFingerExtended(landmarks, 8, 6, 5);
   const middleUp = isFingerExtended(landmarks, 12, 10, 9);
-  const ringDown = landmarks[16].y > landmarks[14].y - 0.025;
-  const pinkyDown = landmarks[20].y > landmarks[18].y - 0.025;
+  const ringDown = landmarks[16].y > landmarks[14].y - tuning.foldedFingerSlack;
+  const pinkyDown = landmarks[20].y > landmarks[18].y - tuning.foldedFingerSlack;
   if (!(indexUp && middleUp && ringDown && pinkyDown)) {
     return false;
   }
 
   const guideReach = Math.max(dist(landmarks[8], wrist), dist(landmarks[12], wrist));
-  const thumbFold = dist(landmarks[4], wrist) < guideReach * 1.42;
+  const thumbFold = dist(landmarks[4], wrist) < guideReach * tuning.thumbFoldRatio;
   return thumbFold;
 }
 
 function isThumbFoldedForTwoSign(landmarks) {
+  const tuning = getGestureTuning();
   const wrist = landmarks[0];
   const guideReach = Math.max(dist(landmarks[8], wrist), dist(landmarks[12], wrist));
-  return dist(landmarks[4], wrist) < guideReach * 1.42;
+  return dist(landmarks[4], wrist) < guideReach * tuning.thumbFoldRatio;
 }
 
 function isOpenPalm(landmarks) {
+  const tuning = getGestureTuning();
   if (!areMajorFingersExtended(landmarks)) {
     return false;
   }
 
   const bounds = getBounds(landmarks);
-  if (bounds.width < 0.07 || bounds.height < 0.1) {
+  if (bounds.width < tuning.openMinWidth || bounds.height < tuning.openMinHeight) {
     return false;
   }
 
   const wrist = landmarks[0];
   const tips = [landmarks[4], landmarks[8], landmarks[12], landmarks[16], landmarks[20]];
   const avgTipY = tips.reduce((sum, tip) => sum + tip.y, 0) / tips.length;
-  if (avgTipY > wrist.y - 0.045) {
+  if (avgTipY > wrist.y - tuning.openAvgTipLift) {
     return false;
   }
 
   const tipSpan = Math.max(landmarks[8].x, landmarks[12].x, landmarks[16].x, landmarks[20].x)
     - Math.min(landmarks[8].x, landmarks[12].x, landmarks[16].x, landmarks[20].x);
-  return tipSpan >= 0.06;
+  return tipSpan >= tuning.openTipSpan;
 }
 
 function classifyRightHandGesture(hand) {
@@ -667,8 +688,12 @@ function drawFrame() {
   }
 
   const trackingText = updateGestureState(rightHand);
-  dom.trackingLabel.textContent = trackingText;
-  dom.fingerLabel.textContent = getFingerDebugText(rightHand);
+  if (dom.trackingLabel) {
+    dom.trackingLabel.textContent = trackingText;
+  }
+  if (dom.fingerLabel) {
+    dom.fingerLabel.textContent = getFingerDebugText(rightHand);
+  }
   drawHandDebug(rightHand, width, height);
   if (rightHand && state.effectVisible) {
     syncEffectPlayback(true);
@@ -755,8 +780,12 @@ async function startExperience(effectKey) {
   state.starting = true;
   showError("");
   state.selectedEffect = effectKey;
-  dom.effectLabel.textContent = EFFECTS[effectKey].label;
-  dom.trackingLabel.textContent = "검지+중지 대기중";
+  if (dom.effectLabel) {
+    dom.effectLabel.textContent = EFFECTS[effectKey].label;
+  }
+  if (dom.trackingLabel) {
+    dom.trackingLabel.textContent = "검지+중지 대기중";
+  }
   state.gateArmedUntil = 0;
   state.effectVisible = false;
   state.effectPlaybackActive = false;
