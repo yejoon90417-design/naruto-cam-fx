@@ -36,6 +36,10 @@ button {
   font: inherit;
 }
 
+a {
+  color: inherit;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -64,6 +68,7 @@ button {
 
 .effect-card {
   position: relative;
+  display: block;
   overflow: hidden;
   padding: 22px 22px 24px;
   border: 1px solid var(--panel-border);
@@ -71,6 +76,7 @@ button {
   background: var(--panel);
   color: var(--text);
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   box-shadow: var(--shadow);
   transition: transform 140ms ease, border-color 140ms ease, filter 140ms ease;

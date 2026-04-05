@@ -120,10 +120,16 @@ function buildRuntimeConfig() {
   };
 }
 
+function getSelectedEffectFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const effect = params.get("effect");
+  return Object.hasOwn(EFFECTS, effect) ? effect : "rasengan";
+}
+
 function setScreen(screenName) {
   const showCamera = screenName === "camera";
-  dom.launcher.classList.toggle("screen-active", !showCamera);
-  dom.cameraScreen.classList.toggle("screen-active", showCamera);
+  dom.launcher?.classList.toggle("screen-active", !showCamera);
+  dom.cameraScreen?.classList.toggle("screen-active", showCamera);
 }
 
 function showError(message) {
@@ -806,17 +812,11 @@ function stopExperience() {
   syncEffectAudio(false);
   Object.values(state.effectVideos).forEach((video) => video.pause());
   stopCamera();
-  setScreen("launcher");
+  window.location.href = "./";
 }
 
 function bindEvents() {
-  document.querySelectorAll("[data-effect]").forEach((button) => {
-    button.addEventListener("click", () => {
-      startExperience(button.dataset.effect);
-    });
-  });
-
-  dom.backButton.addEventListener("click", () => {
+  dom.backButton?.addEventListener("click", () => {
     stopExperience();
   });
 
@@ -825,6 +825,10 @@ function bindEvents() {
 }
 
 function boot() {
+  if (!dom.cameraScreen || !dom.canvas || !dom.video) {
+    return;
+  }
+
   state.runtime = buildRuntimeConfig();
   const trackCanvas = document.createElement("canvas");
   trackCanvas.width = state.runtime.trackWidth;
@@ -839,6 +843,7 @@ function boot() {
   buildEffectVideos();
   bindEvents();
   resizeCanvas();
+  startExperience(getSelectedEffectFromUrl());
 }
 
 boot();

@@ -10,38 +10,15 @@
   <main class="app-shell">
     <section class="screen screen-active" id="launcherScreen">
       <div class="card-grid">
-        <button class="effect-card rasengan" data-effect="rasengan" type="button">
+        <a class="effect-card rasengan" href="camera.html?effect=rasengan">
           <strong>나선환</strong>
-        </button>
+        </a>
 
-        <button class="effect-card chidori" data-effect="chidori" type="button">
+        <a class="effect-card chidori" href="camera.html?effect=chidori">
           <strong>치도리</strong>
-        </button>
+        </a>
       </div>
-    </section>
-
-    <section class="screen" id="cameraScreen">
-      <video id="cameraVideo" autoplay playsinline muted></video>
-      <canvas id="cameraCanvas"></canvas>
-
-      <div class="hud">
-        <div class="status-chip">
-          <strong id="effectLabel">나선환</strong>
-        </div>
-        <div class="status-chip">
-          <strong id="trackingLabel">오른손 대기중</strong>
-        </div>
-        <div class="status-chip status-chip-wide">
-          <strong id="fingerLabel">IDX:- MID:- RNG:- PNK:- THB:-</strong>
-        </div>
-        <button class="back-button" id="backButton" type="button">뒤로</button>
-      </div>
-
-      <div class="error-toast" id="errorToast" hidden></div>
     </section>
   </main>
-
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-  <script src="app.js" defer></script>
 </body>
 </html>
