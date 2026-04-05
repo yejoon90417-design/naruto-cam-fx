@@ -4,9 +4,10 @@ const EFFECTS = {
     source: "assets/naruto.mp4",
     sound: "assets/rasengan.mp3",
     loopStart: 4.0,
-    scale: 8.9,
-    minSize: 420,
-    maxRatio: 0.94,
+    minRatio: 0.16,
+    baseRatio: 0.16,
+    handRatioScale: 1.35,
+    maxRatio: 0.76,
     anchorX: 0.5,
     anchorY: 0.56,
     glow: "rgba(79, 220, 255, 0.95)",
@@ -17,9 +18,10 @@ const EFFECTS = {
     source: "assets/sasuke.mp4",
     sound: "assets/chidori.mp3",
     loopStart: 0.0,
-    scale: 14.2,
-    minSize: 860,
-    maxRatio: 1.34,
+    minRatio: 0.24,
+    baseRatio: 0.24,
+    handRatioScale: 1.75,
+    maxRatio: 1.02,
     anchorX: 0.45,
     anchorY: 0.52,
     glow: "rgba(140, 196, 255, 0.95)",
@@ -648,8 +650,13 @@ function drawEffectOverlay(hand, width, height) {
 
   const baseX = lerp(hand.palm.x, hand.fingertip.x, 0.12) * width;
   const baseY = lerp(hand.palm.y, hand.fingertip.y, 0.12) * height;
-  const handSpan = Math.max(hand.bounds.width * width, hand.bounds.height * height);
-  const nextSize = clamp(handSpan * effect.scale, effect.minSize, width * effect.maxRatio);
+  const handRatio = Math.max(hand.bounds.width, hand.bounds.height);
+  const targetRatio = clamp(
+    effect.baseRatio + handRatio * effect.handRatioScale,
+    effect.minRatio,
+    effect.maxRatio,
+  );
+  const nextSize = width * targetRatio;
 
   state.smoothX = state.smoothX == null ? baseX : lerp(state.smoothX, baseX, 0.24);
   state.smoothY = state.smoothY == null ? baseY : lerp(state.smoothY, baseY, 0.22);
