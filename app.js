@@ -61,6 +61,7 @@ const state = {
   hands: null,
   latestResults: null,
   running: false,
+  starting: false,
   processing: false,
   rafId: 0,
   lastHandSendAt: 0,
@@ -740,6 +741,11 @@ async function startCamera() {
 }
 
 async function startExperience(effectKey) {
+  if (state.starting) {
+    return;
+  }
+
+  state.starting = true;
   showError("");
   state.selectedEffect = effectKey;
   dom.effectLabel.textContent = EFFECTS[effectKey].label;
@@ -753,13 +759,14 @@ async function startExperience(effectKey) {
   state.cachedRightHandAt = 0;
   stopReadyAudio();
   resetSmoothing();
+  setScreen("camera");
+  resizeCanvas();
 
   try {
     await ensureHands();
     await startCamera();
     await playSelectedEffect(true);
     state.running = true;
-    setScreen("camera");
     resizeCanvas();
     window.cancelAnimationFrame(state.rafId);
     state.rafId = window.requestAnimationFrame(renderLoop);
@@ -767,6 +774,8 @@ async function startExperience(effectKey) {
     console.error(error);
     state.running = false;
     showError("카메라를 열지 못했습니다. 브라우저에서 카메라 권한을 허용해 주세요.");
+  } finally {
+    state.starting = false;
   }
 }
 
@@ -781,6 +790,7 @@ function stopCamera() {
 
 function stopExperience() {
   state.running = false;
+  state.starting = false;
   window.cancelAnimationFrame(state.rafId);
   state.rafId = 0;
   state.latestResults = null;
