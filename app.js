@@ -3,6 +3,7 @@ const EFFECTS = {
     label: "나선환",
     source: "assets/naruto.mp4",
     sound: "assets/rasengan.mp3",
+    loopStart: 4.0,
     scale: 8.9,
     minSize: 420,
     maxRatio: 0.94,
@@ -15,6 +16,7 @@ const EFFECTS = {
     label: "치도리",
     source: "assets/sasuke.mp4",
     sound: "assets/chidori.mp3",
+    loopStart: 0.0,
     scale: 14.2,
     minSize: 860,
     maxRatio: 1.34,
@@ -61,6 +63,7 @@ const state = {
   lastHandSendAt: 0,
   gateArmedUntil: 0,
   effectVisible: false,
+  effectPlaybackActive: false,
   smoothX: null,
   smoothY: null,
   smoothSize: null,
@@ -96,7 +99,7 @@ function buildEffectVideos() {
   Object.entries(EFFECTS).forEach(([key, effect]) => {
     const video = document.createElement("video");
     video.src = effect.source;
-    video.loop = true;
+    video.loop = false;
     video.muted = true;
     video.playsInline = true;
     video.preload = "auto";
@@ -365,6 +368,52 @@ function syncEffectAudio(isVisible) {
   }
 }
 
+function syncEffectPlayback(isVisible) {
+  const effect = EFFECTS[state.selectedEffect];
+  const video = state.effectVideos[state.selectedEffect];
+  if (!effect || !video) {
+    return;
+  }
+
+  if (isVisible) {
+    if (!state.effectPlaybackActive) {
+      state.effectPlaybackActive = true;
+      try {
+        video.currentTime = 0;
+      } catch (_error) {
+        // ignore seek failures until metadata is ready
+      }
+      video.play().catch(() => {});
+      return;
+    }
+
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    if (duration > 0.1 && video.currentTime >= duration - 0.08) {
+      const loopStart = clamp(effect.loopStart ?? 0, 0, Math.max(0, duration - 0.1));
+      try {
+        video.currentTime = loopStart;
+      } catch (_error) {
+        // ignore seek failures
+      }
+    }
+
+    if (video.paused) {
+      video.play().catch(() => {});
+    }
+    return;
+  }
+
+  if (state.effectPlaybackActive) {
+    state.effectPlaybackActive = false;
+    video.pause();
+    try {
+      video.currentTime = 0;
+    } catch (_error) {
+      // ignore seek failures
+    }
+  }
+}
+
 function drawBackground(width, height) {
   ctx.save();
   ctx.translate(width, 0);
@@ -471,10 +520,12 @@ function drawFrame() {
   const trackingText = updateGestureState(rightHand);
   dom.trackingLabel.textContent = trackingText;
   if (rightHand && state.effectVisible) {
+    syncEffectPlayback(true);
     drawEffectOverlay(rightHand, width, height);
     syncEffectAudio(true);
   } else {
     resetSmoothing();
+    syncEffectPlayback(false);
     syncEffectAudio(false);
   }
 }
@@ -517,9 +568,12 @@ async function playSelectedEffect(resetTime = false) {
       return;
     }
     if (resetTime) {
-      video.currentTime = 0;
+      try {
+        video.currentTime = 0;
+      } catch (_error) {
+        // ignore seek failures until metadata is ready
+      }
     }
-    video.play().catch(() => {});
   });
 }
 
@@ -549,6 +603,8 @@ async function startExperience(effectKey) {
   dom.trackingLabel.textContent = "검지+중지 대기중";
   state.gateArmedUntil = 0;
   state.effectVisible = false;
+  state.effectPlaybackActive = false;
+  state.effectAudioActive = false;
   resetSmoothing();
 
   try {
@@ -583,7 +639,9 @@ function stopExperience() {
   state.latestResults = null;
   state.gateArmedUntil = 0;
   state.effectVisible = false;
+  state.effectPlaybackActive = false;
   resetSmoothing();
+  syncEffectPlayback(false);
   syncEffectAudio(false);
   Object.values(state.effectVideos).forEach((video) => video.pause());
   stopCamera();
